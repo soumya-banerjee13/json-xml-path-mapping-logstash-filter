@@ -6,7 +6,26 @@ A logstash filter plugin, which parse input events from both json and xml files 
 2. Extract fields from the documents based on some xml and json specific configuration values in configurations files.
 3. Sets the extracted value as the fields of the output events, based on the configuration values in configurations files.
 
-## How the Configuration Files look like?
+## How do the Configuration Files look like?
+1. <b>main-config.properties</b> contains all configuration path and path of identifier attribute. Sample <b>main-config.properties</b> is given below:
+``` properties
+identifier.attribute.path.xml = parent/child/grandchild/id
+identifier.attribute.path.json = parent.child.grandchild.id
+config.location.xml = <path to xml config folder>
+config.location.json = <path to json config folder>
+```
+2. Suppose, <b>value at one document at identifier path is id1</b>. Then one <b>id1.conf</b> should be present in both xml and json config folder.
+Sample id1.conf for xml will look like:
+```
+parent/child/grandchild/field1 => field1
+parent/child/grandchild/field2 => field2
+```
+Sample id1.conf for json will look like:
+```
+parent.child.grandchild.field1 => field1
+parent.child.grandchild.field2 => field2
+```
+This configuration will add <b>field1 and field2</b> fields with the value in their respective path in <b>output event</b> of logstash, for all document <b>having the value id1 at identifier attribute path, in the document field of the input event</b>.  
 
 ## How to Build an Install it in logstash?
 
@@ -35,3 +54,25 @@ Run ./gradlew gem from the root folder of this cloned plugin project. This task 
 2. Run the command: bin/logstash-plugin install --no-verify --local /path/to/logstash-filter-json_xml_path_filter-1.0.0-SNAPSHOT.gem
 
 ## How to Run the Plugin?
+Create a configuration file which will look like below:
+```
+input {
+	file {
+		path => "<some_folder_path>/*.json"
+		start_position => "beginning"
+		sincedb_path => "/dev/null"
+		exclude => "*.gz"
+		codec => json
+	}
+}
+filter {
+  json_xml_path_filter {}
+}
+output {
+  stdout { codec => rubydebug }
+}
+```
+Let's name the configuration file test-config.conf and place it inside config folder of logstash deployment. Run the plugin using the command from logstash deployment home: 
+```bash 
+bin/logstash -f config/test-config.conf
+```
