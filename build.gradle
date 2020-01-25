@@ -49,9 +49,13 @@ shadowJar {
 }
 
 dependencies {
+	//Commons-lang
     compile 'org.apache.commons:commons-lang3:3.7'
+    //Log4j
     compile 'org.apache.logging.log4j:log4j-api:2.9.1'
     compile 'org.apache.logging.log4j:log4j-core:2.9.1'
+    //Jsonpath
+    compile 'com.jayway.jsonpath:json-path:2.4.0'
     compile fileTree(dir: LOGSTASH_CORE_PATH, include: "build/libs/logstash-core-?.?.?.jar")
 
     testCompile 'junit:junit:4.12'
