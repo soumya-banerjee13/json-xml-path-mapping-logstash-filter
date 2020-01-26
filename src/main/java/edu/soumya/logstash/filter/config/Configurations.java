@@ -1,6 +1,7 @@
 package edu.soumya.logstash.filter.config;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -13,7 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import edu.soumya.logstash.filter.exceptions.ConfigurationException;
 
 /**
- * @author SOUMYA BANERJEE
+ * @author Soumya Banerjee
  *
  */
 public class Configurations {
@@ -31,13 +32,16 @@ public class Configurations {
 	 * 
 	 * @param configFilePath
 	 * @return Configurations
-	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public static Configurations loadConfigFromFile(String configFilePath) throws IOException, ConfigurationException {
-		Reader reader = new FileReader(configFilePath);
+	public static Configurations loadConfigFromFile(String configFilePath) throws ConfigurationException {
 		Configurations configs = new Configurations();
-		configs.load(reader);
+		try {
+			Reader reader = new FileReader(configFilePath);
+			configs.load(reader);
+		} catch (FileNotFoundException e) {
+			throw new ConfigurationException("Specified file can not be found",e);
+		}
 		return configs;
 	}
 
@@ -49,23 +53,27 @@ public class Configurations {
 	 * times, throws {@link ConfigurationException}
 	 * 
 	 * @param reader
-	 * @throws IOException,ConfigurationException
 	 * @throws ConfigurationException
 	 */
-	public void load(Reader reader) throws IOException, ConfigurationException {
+	public void load(Reader reader) throws ConfigurationException {
+		if(reader == null) throw new ConfigurationException("Error in loading configuration. Reader not initialized.");
 		BufferedReader buffReader = new BufferedReader(reader, 32768);
 		String line;
-		while ((line = buffReader.readLine()) != null) {
-			if (StringUtils.isBlank(line))
-				continue;
-			String[] keyValue = line.split(KEY_VALUE_SEPARATOR);
-			if (keyValue.length != 2)
-				throw new ConfigurationException("Improper Configuration Supplied");
-			String key = keyValue[0];
-			String value = keyValue[1];
-			if (this.keyValueConfigs.containsKey(key))
-				throw new ConfigurationException("Duplicate Key Found in Confugration");
-			this.keyValueConfigs.put(key, value);
+		try {
+			while ((line = buffReader.readLine()) != null) {
+				if (StringUtils.isBlank(line))
+					continue;
+				String[] keyValue = line.split(KEY_VALUE_SEPARATOR);
+				if (keyValue.length != 2)
+					throw new ConfigurationException("Improper Configuration Supplied");
+				String key = keyValue[0];
+				String value = keyValue[1];
+				if (this.keyValueConfigs.containsKey(key))
+					throw new ConfigurationException("Duplicate Key Found in Confugration");
+				this.keyValueConfigs.put(key, value);
+			}
+		} catch(IOException ioException) {
+			throw new ConfigurationException("Failed to read the Configuration file",ioException);
 		}
 	}
 	
@@ -77,7 +85,7 @@ public class Configurations {
 	 * @param key
 	 * @return
 	 */
-	public String getConfiguration(String key) {
+	public String getValue(String key) {
 		return this.keyValueConfigs.get(key);
 	}
 	

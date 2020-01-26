@@ -1,7 +1,7 @@
 package edu.soumya.logstash.filter.exceptions;
 
 /**
- * @author SOUMYA BANERJEE
+ * @author Soumya Banerjee
  *
  */
 public class ConfigurationException extends Exception {
@@ -46,7 +46,6 @@ public class ConfigurationException extends Exception {
      *        {@link #getCause()} method).  (A null value is permitted,
      *        and indicates that the cause is nonexistent or unknown.)
      *
-     * @since 1.6
      */
     public ConfigurationException(String message, Throwable cause) {
         super(message, cause);
@@ -64,7 +63,6 @@ public class ConfigurationException extends Exception {
      *        {@link #getCause()} method).  (A null value is permitted,
      *        and indicates that the cause is nonexistent or unknown.)
      *
-     * @since 1.6
      */
     public ConfigurationException(Throwable cause) {
         super(cause);
