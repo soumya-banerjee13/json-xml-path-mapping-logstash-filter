@@ -56,6 +56,7 @@ public class ConfigurationsCache {
 			return configurationsMap.get(configFilePath);
 		}
 		configurationsQueue.add(configFilePath);
-		return Configurations.loadConfigFromFile(configFilePath);
+                configurationsMap.put(configFilePath,Configurations.loadConfigFromFile(configFilePath));
+		return configurationsMap.get(configFilePath);
 	}
 }
