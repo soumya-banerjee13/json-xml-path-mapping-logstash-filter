@@ -37,7 +37,7 @@ public class ConfigurationsCache {
 	 * @return
 	 * @throws ConfigurationException
 	 */
-	public Configurations getConfigFromFile(String configFilePath) throws ConfigurationException {
+	public Configurations getConfigFromFileOrCache(String configFilePath) throws ConfigurationException {
 		if (!configurationsMap.containsKey(configFilePath)) {
 			//If capacity is null do nothing.
 			//Otherwise check if dequeue size has reached the capacity
@@ -56,7 +56,7 @@ public class ConfigurationsCache {
 			return configurationsMap.get(configFilePath);
 		}
 		configurationsQueue.add(configFilePath);
-                configurationsMap.put(configFilePath,Configurations.loadConfigFromFile(configFilePath));
+        configurationsMap.put(configFilePath,Configurations.loadConfigFromFile(configFilePath));
 		return configurationsMap.get(configFilePath);
 	}
 }

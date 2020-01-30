@@ -22,8 +22,7 @@ public class PropertiesLoaderUtil {
 	 */
 	public static Properties getPropertiesFromFile(String filePath) throws ConfigurationException {
 		Properties prop = new Properties();
-		try {
-			Reader reader = new FileReader(filePath);
+		try(Reader reader = new FileReader(filePath)) {
 			prop.load(reader);
 		} catch(IOException ioException) {
 			throw new ConfigurationException("Unable to parse the properties file", ioException);

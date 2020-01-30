@@ -27,7 +27,7 @@ parent.child.grandchild.field2 => field2
 ```
 This configuration will add <b>field1 and field2</b> fields with the value in their respective path in <b>output event</b> of logstash, for all document <b>having the value id1 at identifier attribute path, in the document field of the input event</b>.  
 
-## How to Build an Install it in logstash?
+## How to Build and Install it in logstash?
 
 ### Clone the plugin repo
 Clone this filter plugin repository or download zip
