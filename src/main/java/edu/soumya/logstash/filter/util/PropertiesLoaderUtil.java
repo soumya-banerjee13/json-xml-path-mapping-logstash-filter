@@ -13,7 +13,7 @@ import edu.soumya.logstash.filter.exceptions.ConfigurationException;
  */
 public class PropertiesLoaderUtil {
 	/**
-	 * Return 
+	 * Returns List of Properties from the file in the <code>filePath</code>
 	 * @param filePath
 	 * @return properties loaded from <code>filePath</code>
 	 * @throws ConfigurationException 

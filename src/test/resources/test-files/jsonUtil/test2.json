@@ -1,0 +1,15 @@
+{
+	"ad": {
+		"year": "1977",
+		"make": "Soumya",
+		"model": "Skyhawk",
+		"color": "Light blue and white",
+		"description": "New paint, nearly new interior, 685 hours SMOH, full IFR King avionics",
+		"price": "23,495",
+		"seller": "Skyway Aircraft",
+		"location": {
+			"city": "Rapid City,",
+			"state": "South Dakota"
+		}
+	}
+}

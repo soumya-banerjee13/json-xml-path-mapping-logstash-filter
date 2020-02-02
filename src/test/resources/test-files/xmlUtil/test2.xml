@@ -1,0 +1,21 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+
+<!-- planes.xml - A document that lists an ad for used airplanes -->
+
+<planes_for_sale>
+	<ad>
+		<year> 1977 </year>
+		<make> Soumya </make>
+		<model> Skyhawk </model>
+		<color> Light blue and white </color>
+		<description> New paint, nearly new interior,
+			685 hours SMOH, full IFR King avionics
+		</description>
+		<price> 23,495 </price>
+		<seller phone="555-222-3333"> Skyway Aircraft </seller>
+		<location>
+			<city> Rapid City, </city>
+			<state> South Dakota </state>
+		</location>
+	</ad>
+</planes_for_sale>

@@ -143,6 +143,9 @@ public class Configurations {
 		return this.keyValueConfigs.keySet();
 	}
 	
+	/**
+	 * @return true if <code>keyValueConfigs</code> map is null or has no entry in it
+	 */
 	public Boolean isEmptyConfigSet() {
 		return Boolean.valueOf((this.keyValueConfigs==null) || (this.keyValueConfigs.size()==0));
 	}

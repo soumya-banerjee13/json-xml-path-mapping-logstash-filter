@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.xpath.XPath;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -81,26 +84,27 @@ public class JsonXmlPathFilter implements Filter {
 	 * Configuration setting for the filter, containing path of the folder of log
 	 * files.<br>
 	 * Should be a valid folder path.<br>
-	 * If not specified will be defaulted to specified value in log4j2 configuration.
+	 * If not specified will be defaulted to specified value in log4j2
+	 * configuration.
 	 */
 	public static final PluginConfigSpec<String> LOG_FOLDER_PATH = PluginConfigSpec.stringSetting("logFolderPath");
 
 	/**
-	 * Configuration setting for the filter, says for how many days log files will be
-	 * stored.<br>
+	 * Configuration setting for the filter, says for how many days log files will
+	 * be stored.<br>
 	 * Should be a valid Integer.<br>
-	 * If not specified will be defaulted to specified value in log4j2 configuration.
+	 * If not specified will be defaulted to specified value in log4j2
+	 * configuration.
 	 */
-	public static final PluginConfigSpec<Long> LOGGING_MAX_HISTORY = PluginConfigSpec
-			.numSetting("loggingMaxHistory");
-	
+	public static final PluginConfigSpec<Long> LOGGING_MAX_HISTORY = PluginConfigSpec.numSetting("loggingMaxHistory");
+
 	/**
 	 * Configuration setting for the filter, sets the logger level.<br>
 	 * Valid Values are ALL,DEBUG,INFO,WARN,ERROR,FATAL,OFF,TRACE<br>
-	 * If not specified will be defaulted to specified value in log4j2 configuration.
+	 * If not specified will be defaulted to specified value in log4j2
+	 * configuration.
 	 */
-	public static final PluginConfigSpec<String> LOG_LEVEL = PluginConfigSpec
-			.stringSetting("logLevel");
+	public static final PluginConfigSpec<String> LOG_LEVEL = PluginConfigSpec.stringSetting("logLevel");
 
 	/**
 	 * The id of the Logstash Filter
@@ -126,7 +130,11 @@ public class JsonXmlPathFilter implements Filter {
 	 * Instance of ConfigurationsCache
 	 */
 	private ConfigurationsCache configCache;
+
+	private DocumentBuilder xmlDocBuilder;
 	
+	private XPath xPathInstance;
+
 	public JsonXmlPathFilter(String id, Configuration config, Context context) throws ConfigurationException {
 		// constructors should validate configuration options
 		this.id = id;
@@ -135,10 +143,13 @@ public class JsonXmlPathFilter implements Filter {
 		this.mainProperties = PropertiesLoaderUtil.getPropertiesFromFile(config.get(MAIN_PROPERTIES_PATH_CONFIG));
 		this.configCache = new ConfigurationsCache(config.get(CACHE_SIZE_CONFIG));
 		configureLoggingProperties(config);
+		this.xmlDocBuilder = XmlParseUtil.createDocBuilderInstance();
+		this.xPathInstance = XmlParseUtil.createXPathInstance();
 	}
 
 	/**
-	 * Set logging configuration properties. 
+	 * Set logging configuration properties.
+	 * 
 	 * @param config
 	 */
 	private void configureLoggingProperties(Configuration config) {
@@ -173,6 +184,7 @@ public class JsonXmlPathFilter implements Filter {
 			} else if (StringUtils.equals(typeField, Constants.DOC_TYPE_JSON)) {
 				processJsonDocument(event, eventIterator);
 			} // else do nothing
+			matchListener.filterMatched(event);
 		}
 		return events;
 	}
@@ -192,9 +204,16 @@ public class JsonXmlPathFilter implements Filter {
 		Object document = event.getField(this.documentField);
 		if (document instanceof String) {
 			String xmlDocument = (String) document;
-			Document domDocument = XmlParseUtil.getDocument(xmlDocument);
-			String documentId = XmlParseUtil.getStringFromXPath(domDocument,
-					this.mainProperties.getProperty(Constants.XML_IDENTIFIER_KEY));
+			Document domDocument;
+			String documentId = null;
+			try {
+				domDocument = XmlParseUtil.getDocument(this.xmlDocBuilder, xmlDocument);
+				documentId = XmlParseUtil.getStringFromXPath(domDocument, this.xPathInstance,
+						this.mainProperties.getProperty(Constants.XML_IDENTIFIER_KEY));
+			} catch (ConfigurationException configEx) {
+				handleConfigurationException(event, configEx);
+				return;
+			}
 			// Add identifier field in the event
 			event.setField(Constants.IDENTIFIER_EVENT_FIELD, documentId);
 			String documentIdWithExt = StringUtils.join(documentId, Constants.CONFIG_FILE_EXTENSION);
@@ -216,8 +235,13 @@ public class JsonXmlPathFilter implements Filter {
 				eventIterator.remove();
 				return;
 			}
-			Map<String, List<String>> destFieldValuesMap = populateDestinationFieldValueMap(config, domDocument,
-					Constants.DOC_TYPE_XML);
+			Map<String, List<String>> destFieldValuesMap = null;
+			try {
+				destFieldValuesMap = populateDestinationFieldValueMap(config, domDocument, Constants.DOC_TYPE_XML);
+			} catch (ConfigurationException configEx) {
+				handleConfigurationException(event, configEx);
+				return;
+			}
 			// Add fields to event
 			addFieldsToEventFromMap(destFieldValuesMap, event);
 		} // else do nothing
@@ -239,8 +263,14 @@ public class JsonXmlPathFilter implements Filter {
 		if (document instanceof String) {
 			String jsonDocument = (String) document;
 			DocumentContext jsonDocumentContext = JsonParseUtil.getDocumentContext(jsonDocument);
-			String documentId = JsonParseUtil.getStringFromJsonPath(jsonDocumentContext,
-					this.mainProperties.getProperty(Constants.JSON_IDENTIFIER_KEY));
+			String documentId = null;
+			try {
+				documentId = JsonParseUtil.getStringFromJsonPath(jsonDocumentContext,
+						this.mainProperties.getProperty(Constants.JSON_IDENTIFIER_KEY));
+			} catch (ConfigurationException configEx) {
+				handleConfigurationException(event, configEx);
+				return;
+			}
 			// Add identifier field in the event
 			event.setField(Constants.IDENTIFIER_EVENT_FIELD, documentId);
 			String documentIdWithExt = StringUtils.join(documentId, Constants.CONFIG_FILE_EXTENSION);
@@ -262,8 +292,14 @@ public class JsonXmlPathFilter implements Filter {
 				eventIterator.remove();
 				return;
 			}
-			Map<String, List<String>> destFieldValuesMap = populateDestinationFieldValueMap(config, jsonDocumentContext,
-					Constants.DOC_TYPE_JSON);
+			Map<String, List<String>> destFieldValuesMap = null;
+			try {
+				destFieldValuesMap = populateDestinationFieldValueMap(config, jsonDocumentContext,
+						Constants.DOC_TYPE_JSON);
+			} catch (ConfigurationException configEx) {
+				handleConfigurationException(event, configEx);
+				return;
+			}
 			// Add fields to event
 			addFieldsToEventFromMap(destFieldValuesMap, event);
 		} // else do nothing
@@ -278,9 +314,10 @@ public class JsonXmlPathFilter implements Filter {
 	/**
 	 * @param fieldValuesMap
 	 * @param event
+	 * @throws ConfigurationException
 	 */
 	private Map<String, List<String>> populateDestinationFieldValueMap(Configurations config, Object currentDocument,
-			String documentType) {
+			String documentType) throws ConfigurationException {
 		Map<String, List<String>> destFieldValuesMap = new HashMap<String, List<String>>();
 		for (String attributePathSource : config.getAllConfigurationKeys()) {
 			String destinationField = config.getValue(attributePathSource);
@@ -291,8 +328,8 @@ public class JsonXmlPathFilter implements Filter {
 				destFieldValuesMap.get(destinationField).add(
 						JsonParseUtil.getStringFromJsonPath((DocumentContext) currentDocument, attributePathSource));
 			} else if (StringUtils.equals(documentType, Constants.DOC_TYPE_XML)) {
-				destFieldValuesMap.get(destinationField)
-						.add(XmlParseUtil.getStringFromXPath((Document) currentDocument, attributePathSource));
+				destFieldValuesMap.get(destinationField).add(XmlParseUtil.getStringFromXPath((Document) currentDocument,
+						this.xPathInstance, attributePathSource));
 			}
 		}
 		return destFieldValuesMap;

@@ -14,6 +14,7 @@ public final class Constants {
 	public static final String IDENTIFIER_EVENT_FIELD = "doc_id";
 	public static final String CONFIG_FILE_EXTENSION = ".conf";
 	public static final String DOCUMENT_PARSE_FAILURE_TAG = "_documentparsefailure";
+	public static final String CHARSET_ENCODING_UTF8 = "UTF-8";
 	//Logging Configuration Constants
 	public static final String LOG_FOLDER_PATH = "logFolderPath";
 	public static final String LOGGING_MAX_HISTORY = "loggingMaxHistory";
