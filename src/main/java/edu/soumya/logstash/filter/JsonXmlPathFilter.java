@@ -16,9 +16,8 @@ import javax.xml.xpath.XPath;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 
 import com.jayway.jsonpath.DocumentContext;
@@ -48,7 +47,7 @@ public class JsonXmlPathFilter implements Filter {
 	/**
 	 * Logger Instance
 	 */
-	public static final Logger LOGGER = LoggerFactory.getLogger(JsonXmlPathFilter.class);
+	public static final Logger LOGGER = LogManager.getLogger();
 	/**
 	 * Configuration to set the field of the event from where we will get the
 	 * document.<br>

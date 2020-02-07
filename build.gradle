@@ -51,10 +51,9 @@ shadowJar {
 dependencies {
 	//Commons-lang
     compile 'org.apache.commons:commons-lang3:3.7'
-    //Using best performance logging framework lo4j2 with slf4j-api 
+    //Using best performance logging framework lo4j2 with log4j-api 
     compile 'org.apache.logging.log4j:log4j-api:2.9.1'
     compile 'org.apache.logging.log4j:log4j-core:2.9.1'
-    compile 'org.apache.logging.log4j:log4j-slf4j-impl:2.9.1'
     //Jsonpath processing library
     compile 'com.jayway.jsonpath:json-path:2.4.0'
     //Xpath processing library
