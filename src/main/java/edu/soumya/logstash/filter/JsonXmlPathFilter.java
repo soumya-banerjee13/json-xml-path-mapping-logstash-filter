@@ -178,11 +178,15 @@ public class JsonXmlPathFilter implements Filter {
 			 * path of the identifier attribute in xpath or jsonpath format and folder
 			 * locations where configuration files for xml and json will be stored
 			 */
-			if (StringUtils.equals(typeField, Constants.DOC_TYPE_XML)) {
-				processXmlDocument(event, eventIterator);
-			} else if (StringUtils.equals(typeField, Constants.DOC_TYPE_JSON)) {
-				processJsonDocument(event, eventIterator);
-			} // else do nothing
+			Object docType = event.getField(typeField);
+			if(docType instanceof String) {
+				String docTypeStr = (String) docType;
+				if (StringUtils.equals(docTypeStr, Constants.DOC_TYPE_XML)) {
+					processXmlDocument(event, eventIterator);
+				} else if (StringUtils.equals(docTypeStr, Constants.DOC_TYPE_JSON)) {
+					processJsonDocument(event, eventIterator);
+				} // else do nothing
+			}
 			matchListener.filterMatched(event);
 		}
 		return events;
