@@ -134,6 +134,9 @@ public class JsonXmlPathFilter implements Filter {
 	
 	private XPath xPathInstance;
 
+	/**
+	 * Constructor
+	 */
 	public JsonXmlPathFilter(String id, Configuration config, Context context) throws ConfigurationException {
 		// constructors should validate configuration options
 		this.id = id;
@@ -144,6 +147,24 @@ public class JsonXmlPathFilter implements Filter {
 		configureLoggingProperties(config);
 		this.xmlDocBuilder = XmlParseUtil.createDocBuilderInstance();
 		this.xPathInstance = XmlParseUtil.createXPathInstance();
+		showFilterPluginInfo(config);
+	}
+	
+	private void showFilterPluginInfo(Configuration config) {
+		StringBuilder filterInfo = new StringBuilder();
+		
+		filterInfo.append("Filter Info: ");
+		filterInfo.append("[");
+		filterInfo.append(" documentField: ").append(this.documentField).append(",");
+		filterInfo.append(" typeField: ").append(this.typeField).append(",");
+		filterInfo.append(" mainProp: ").append(config.get(MAIN_PROPERTIES_PATH_CONFIG)).append(",");
+		filterInfo.append(" cacheSize: ").append(config.get(CACHE_SIZE_CONFIG)).append(",");
+		filterInfo.append(" logFolderPath: ").append(config.get(LOG_FOLDER_PATH)).append(",");
+		filterInfo.append(" loggingMaxHistory: ").append(config.get(LOGGING_MAX_HISTORY)).append(",");
+		filterInfo.append(" logLevel: ").append(config.get(LOG_LEVEL));
+		filterInfo.append("]");
+		
+		LOGGER.info(filterInfo.toString());
 	}
 
 	/**
@@ -372,5 +393,14 @@ public class JsonXmlPathFilter implements Filter {
 	@Override
 	public String getId() {
 		return this.id;
+	}
+	
+	@Override
+	public String toString() {
+		StringBuilder filterInfo = new StringBuilder();
+		
+		
+		
+		return filterInfo.toString();
 	}
 }
