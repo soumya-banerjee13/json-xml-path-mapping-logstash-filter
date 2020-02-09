@@ -45,6 +45,8 @@ public class XmlParseUtil {
 	}
 
 	/**
+	 * Returns the {@link Document} instance after parsing the xml.
+	 * 
 	 * @param xmlString
 	 * @return
 	 * @throws ConfigurationException
@@ -52,7 +54,7 @@ public class XmlParseUtil {
 	public static Document getDocument(DocumentBuilder docBuilder, String xmlString) throws ConfigurationException {
 		Document document = null;
 		try {
-			InputStream input =  new ByteArrayInputStream(xmlString.getBytes(Constants.CHARSET_ENCODING_UTF8));
+			InputStream input = new ByteArrayInputStream(xmlString.getBytes(Constants.CHARSET_ENCODING_UTF8));
 			document = docBuilder.parse(input);
 		} catch (SAXException | IOException e) {
 			throw new ConfigurationException("Failed to Parse the xml document.", e);
@@ -61,6 +63,9 @@ public class XmlParseUtil {
 	}
 
 	/**
+	 * Returns the string type value from the <code>document</code> , using the given
+	 * <code>xPathExpression</code>
+	 * 
 	 * @param document
 	 * @param xPathExpression
 	 * @return
@@ -71,8 +76,7 @@ public class XmlParseUtil {
 			throws ConfigurationException {
 		String valueFromXPath = StringUtils.EMPTY;
 		try {
-			valueFromXPath = ((String) xPath.compile(xPathExpression).evaluate(document,
-					XPathConstants.STRING)).trim();
+			valueFromXPath = ((String) xPath.compile(xPathExpression).evaluate(document, XPathConstants.STRING)).trim();
 		} catch (XPathExpressionException e) {
 			throw new ConfigurationException("Failed to evaluate the xpath expression.", e);
 		}

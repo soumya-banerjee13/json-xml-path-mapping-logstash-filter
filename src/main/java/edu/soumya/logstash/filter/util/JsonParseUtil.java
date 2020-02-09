@@ -11,22 +11,27 @@ import edu.soumya.logstash.filter.exceptions.ConfigurationException;
  */
 public class JsonParseUtil {
 	/**
+	 * Returns the {@link DocumentContext} instance after parsing the json.
+	 * 
 	 * @param jsonString
 	 * @return
 	 */
 	public static DocumentContext getDocumentContext(String jsonString) {
 		return JsonPath.parse(jsonString);
 	}
-	
+
 	/**
-	 * @param ctx
+	 * Returns the string type value from the given <code>jsonPath</code> in
+	 * <code>context</code>
+	 * 
+	 * @param context
 	 * @param jsonPath
 	 * @return
-	 * @throws ConfigurationException 
+	 * @throws ConfigurationException
 	 */
-	public static String getStringFromJsonPath(DocumentContext ctx, String jsonPath) throws ConfigurationException {
+	public static String getStringFromJsonPath(DocumentContext context, String jsonPath) throws ConfigurationException {
 		try {
-			Object value = ctx.read(jsonPath);
+			Object value = context.read(jsonPath);
 			return String.valueOf(value);
 		} catch (RuntimeException e) {
 			throw new ConfigurationException("Failed to evaluate the jsonPath expression.", e);

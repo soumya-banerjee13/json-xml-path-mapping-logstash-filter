@@ -17,7 +17,6 @@ import javax.xml.xpath.XPath;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
 import org.w3c.dom.Document;
 
 import com.jayway.jsonpath.DocumentContext;
@@ -80,32 +79,6 @@ public class JsonXmlPathFilter implements Filter {
 	public static final PluginConfigSpec<Long> CACHE_SIZE_CONFIG = PluginConfigSpec.numSetting("cacheSize");
 
 	/**
-	 * Configuration setting for the filter, containing path of the folder of log
-	 * files.<br>
-	 * Should be a valid folder path.<br>
-	 * If not specified will be defaulted to specified value in log4j2
-	 * configuration.
-	 */
-	public static final PluginConfigSpec<String> LOG_FOLDER_PATH = PluginConfigSpec.stringSetting("logFolderPath");
-
-	/**
-	 * Configuration setting for the filter, says for how many days log files will
-	 * be stored.<br>
-	 * Should be a valid Integer.<br>
-	 * If not specified will be defaulted to specified value in log4j2
-	 * configuration.
-	 */
-	public static final PluginConfigSpec<Long> LOGGING_MAX_HISTORY = PluginConfigSpec.numSetting("loggingMaxHistory");
-
-	/**
-	 * Configuration setting for the filter, sets the logger level.<br>
-	 * Valid Values are ALL,DEBUG,INFO,WARN,ERROR,FATAL,OFF,TRACE<br>
-	 * If not specified will be defaulted to specified value in log4j2
-	 * configuration.
-	 */
-	public static final PluginConfigSpec<String> LOG_LEVEL = PluginConfigSpec.stringSetting("logLevel");
-
-	/**
 	 * The id of the Logstash Filter
 	 */
 	private String id;
@@ -130,10 +103,19 @@ public class JsonXmlPathFilter implements Filter {
 	 */
 	private ConfigurationsCache configCache;
 
+	/**
+	 * Document Builder Instance for Xml parsing
+	 */
 	private DocumentBuilder xmlDocBuilder;
 	
+	/**
+	 * XPath Instance for Xml parsing
+	 */
 	private XPath xPathInstance;
 
+	/**
+	 * Constructor
+	 */
 	public JsonXmlPathFilter(String id, Configuration config, Context context) throws ConfigurationException {
 		// constructors should validate configuration options
 		this.id = id;
@@ -141,31 +123,34 @@ public class JsonXmlPathFilter implements Filter {
 		this.typeField = config.get(TYPE_CONFIG);
 		this.mainProperties = PropertiesLoaderUtil.getPropertiesFromFile(config.get(MAIN_PROPERTIES_PATH_CONFIG));
 		this.configCache = new ConfigurationsCache(config.get(CACHE_SIZE_CONFIG));
-		configureLoggingProperties(config);
 		this.xmlDocBuilder = XmlParseUtil.createDocBuilderInstance();
 		this.xPathInstance = XmlParseUtil.createXPathInstance();
+		showFilterPluginInfo(config);
 	}
-
+	
 	/**
-	 * Set logging configuration properties.
+	 * Log the filter info
 	 * 
 	 * @param config
 	 */
-	private void configureLoggingProperties(Configuration config) {
-		org.apache.logging.log4j.core.config.Configuration loggingConfiguration = ((LoggerContext) LogManager
-				.getContext()).getConfiguration();
-
-		if (StringUtils.isNotBlank(config.get(LOG_FOLDER_PATH)))
-			loggingConfiguration.getProperties().put(Constants.LOG_LEVEL, config.get(LOG_FOLDER_PATH));
-
-		if (config.get(LOGGING_MAX_HISTORY) != null)
-			loggingConfiguration.getProperties().put(Constants.LOGGING_MAX_HISTORY,
-					String.valueOf(config.get(LOGGING_MAX_HISTORY)));
-
-		if (StringUtils.isNotBlank(config.get(LOG_LEVEL)))
-			loggingConfiguration.getProperties().put(Constants.LOG_LEVEL, config.get(LOG_LEVEL));
+	private void showFilterPluginInfo(Configuration config) {
+		StringBuilder filterInfo = new StringBuilder();
+		
+		filterInfo.append("Filter Info: ");
+		filterInfo.append("[");
+		filterInfo.append(" documentField: ").append(this.documentField).append(",");
+		filterInfo.append(" typeField: ").append(this.typeField).append(",");
+		filterInfo.append(" mainProp: ").append(config.get(MAIN_PROPERTIES_PATH_CONFIG)).append(",");
+		filterInfo.append(" cacheSize: ").append(config.get(CACHE_SIZE_CONFIG)).append(",");
+		filterInfo.append("]");
+		
+		LOGGER.info(filterInfo.toString());
 	}
 
+
+	/* (non-Javadoc)
+	 * @see co.elastic.logstash.api.Filter#filter(java.util.Collection, co.elastic.logstash.api.FilterMatchListener)
+	 */
 	@Override
 	public Collection<Event> filter(Collection<Event> events, FilterMatchListener matchListener) {
 		for (Iterator<Event> eventIterator = events.iterator(); eventIterator.hasNext();) {
@@ -308,6 +293,13 @@ public class JsonXmlPathFilter implements Filter {
 		} // else do nothing
 	}
 
+	/**
+	 * When {@link ConfigurationException} occurs logs the error and tag the event
+	 * with failure status
+	 * 
+	 * @param event
+	 * @param configEx
+	 */
 	private void handleConfigurationException(Event event, ConfigurationException configEx) {
 		// If there any Configuration Exception occurs add error tag with the event
 		LOGGER.error("Configuration Exception Occurred. Failed to parse the document", configEx);
@@ -315,6 +307,8 @@ public class JsonXmlPathFilter implements Filter {
 	}
 
 	/**
+	 * Gets the values from xPath or jsonPath, maps them with the targeted field.
+	 * 
 	 * @param fieldValuesMap
 	 * @param event
 	 * @throws ConfigurationException
@@ -339,6 +333,9 @@ public class JsonXmlPathFilter implements Filter {
 	}
 
 	/**
+	 * Adds fields with the values to event, from <code>fieldValuesMap</code>
+	 * parameter
+	 * 
 	 * @param fieldValuesMap
 	 * @param event
 	 */
@@ -355,6 +352,9 @@ public class JsonXmlPathFilter implements Filter {
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see co.elastic.logstash.api.Plugin#configSchema()
+	 */
 	@Override
 	public Collection<PluginConfigSpec<?>> configSchema() {
 		// should return a list of all configuration options for this plugin
@@ -363,12 +363,12 @@ public class JsonXmlPathFilter implements Filter {
 		configList.add(TYPE_CONFIG);
 		configList.add(MAIN_PROPERTIES_PATH_CONFIG);
 		configList.add(CACHE_SIZE_CONFIG);
-		configList.add(LOG_FOLDER_PATH);
-		configList.add(LOGGING_MAX_HISTORY);
-		configList.add(LOG_LEVEL);
 		return Collections.unmodifiableList(configList);
 	}
 
+	/* (non-Javadoc)
+	 * @see co.elastic.logstash.api.Plugin#getId()
+	 */
 	@Override
 	public String getId() {
 		return this.id;

@@ -9,7 +9,8 @@ import edu.soumya.logstash.filter.config.Configurations;
 import edu.soumya.logstash.filter.exceptions.ConfigurationException;
 
 /**
- * Implementation of Least recently used cache to cache most used configurations<br>
+ * Implementation of Least recently used cache to cache most used
+ * configurations<br>
  * and remove least recently used one when a cache miss occurs,<br>
  * to avoid loading configurations from files every time.
  * 
@@ -33,16 +34,19 @@ public class ConfigurationsCache {
 	}
 
 	/**
+	 * Gets the {@link Configurations} from the cache or loads it from file if it is
+	 * not available in the cache
+	 * 
 	 * @param configFilePath
 	 * @return
 	 * @throws ConfigurationException
 	 */
 	public Configurations getConfigFromFileOrCache(String configFilePath) throws ConfigurationException {
 		if (!configurationsMap.containsKey(configFilePath)) {
-			//If capacity is null do nothing.
-			//Otherwise check if dequeue size has reached the capacity
+			// If capacity is null do nothing.
+			// Otherwise check if dequeue size has reached the capacity
 			// Remove the element from the tail of the dequeue and from the map
-			if (capacity!=null && (configurationsQueue.size() == capacity.intValue())) {
+			if (capacity != null && (configurationsQueue.size() == capacity.intValue())) {
 				String last = configurationsQueue.removeLast();
 				configurationsMap.remove(last);
 			}
@@ -55,8 +59,15 @@ public class ConfigurationsCache {
 			configurationsQueue.push(configFilePath);
 			return configurationsMap.get(configFilePath);
 		}
-		configurationsQueue.add(configFilePath);
-        configurationsMap.put(configFilePath,Configurations.loadConfigFromFile(configFilePath));
+		configurationsQueue.push(configFilePath);
+		configurationsMap.put(configFilePath, Configurations.loadConfigFromFile(configFilePath));
 		return configurationsMap.get(configFilePath);
+	}
+	
+	/**
+	 * @return the Map Instance of the cache
+	 */
+	public Map<String, Configurations> getCurrentCacheMap() {
+		return this.configurationsMap;
 	}
 }
