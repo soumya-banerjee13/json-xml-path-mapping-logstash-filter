@@ -1,6 +1,34 @@
 # json-xml-path-mapping-logstash-filter
 A logstash filter plugin, which parse input events from both json and xml files and modifies the events based on the configuration specified for the plugin
 
+## Filter Configuration Options:
+| <b>Setting</b> | <b>Input Type</b> | <b>Required</b> | <b>Default Value</b> |
+|----------------|-------------------|-----------------|----------------------|
+| document       | String            | No              | message              |
+| type           | String            | No              | type                 |
+| mainProp       | String(Uri)       | Yes             | -                    |
+| cacheSize      | Long              | No              | -                    |
+
+### document:
+Configuration to set the field of the event from where we will get the document.
+Default value is “message”.
+
+### type:
+Configuration to set the field of the event from where we will get the type of the document.
+If the type is json/xml it will be processed. Default value is “type”.
+
+### mainProp:
+Configuration setting for the filter containing path of the main properties file.
+
+This is a required field, should be a valid file path. Inside the file four properties and their values must be present. 
+These are: identifier.attribute.path.xml (xpath of identifier field), identifier.attribute.path.json (jsonpath of identifier field), config.location.xml (folder path where document type specific configuration files will be present for xml documents), config.location.json (folder path where document type specific configuration files will be present for json documents).
+
+### cacheSize:
+Configuration setting for the filter, which says maximum how many configurations files can be stored in cache memory. This is being done to avoid reading document type specific configuration files to be read multiple times from disk, which may cause performance degradation during event filtering.
+
+If not specified cache size will be infinite, which may cause memory overflow.
+
+
 ## What it does?
 1. It takes both xml and json type documents from logstash input events.
 2. Extract fields from the documents based on some xml and json specific configuration values in configurations files.
@@ -10,7 +38,7 @@ A logstash filter plugin, which parse input events from both json and xml files 
 1. <b>main-config.properties</b> contains all configuration path and path of identifier attribute. Sample <b>main-config.properties</b> is given below:
 ``` properties
 identifier.attribute.path.xml = parent/child/grandchild/id
-identifier.attribute.path.json = parent.child.grandchild.id
+identifier.attribute.path.json = $.parent.child.grandchild.id
 config.location.xml = <path to xml config folder>
 config.location.json = <path to json config folder>
 ```
@@ -22,8 +50,8 @@ parent/child/grandchild/field2 => field2
 ```
 Sample id1.conf for json will look like:
 ```
-parent.child.grandchild.field1 => field1
-parent.child.grandchild.field2 => field2
+$.parent.child.grandchild.field1 => field1
+$.parent.child.grandchild.field2 => field2
 ```
 This configuration will add <b>field1 and field2</b> fields with the value in their respective path in <b>output event</b> of logstash, for all document <b>having the value id1 at identifier attribute path, in the document field of the input event</b>.  
 
@@ -60,13 +88,23 @@ input {
 	file {
 		path => "<some_folder_path>/*.json"
 		start_position => "beginning"
-		sincedb_path => "/dev/null"
+		sincedb_path => "/dev/jsonDb"
+		exclude => "*.gz"
+		codec => json
+	}
+	file {
+		path => "<some_folder_path>/*.xml"
+		start_position => "beginning"
+		sincedb_path => "/dev/xmlDb"
 		exclude => "*.gz"
 		codec => json
 	}
 }
 filter {
-  json_xml_path_filter {}
+  	json_xml_path_filter {
+		mainProp => "<some_folder_path>/testProp.properties"
+		cacheSize => 10
+  	}
 }
 output {
   stdout { codec => rubydebug }
@@ -76,3 +114,6 @@ Let's name the configuration file test-config.conf and place it inside config fo
 ```bash 
 bin/logstash -f config/test-config.conf
 ```
+
+## Sample configuration files and detailed documents
+Available at: https://drive.google.com/drive/folders/1U9Xi62tcozdczyvy79H00hoF9_sfIAT8?usp=sharing
