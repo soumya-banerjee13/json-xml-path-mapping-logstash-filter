@@ -1,0 +1,15 @@
+{
+  "stations": [
+    {
+      "value": {
+      	"station": {
+	        "id": "hwh"
+      	}
+      },
+      "station": {
+        "name": "Howrah",
+		"trainsToday": 30
+      	}
+    }
+  ]
+}

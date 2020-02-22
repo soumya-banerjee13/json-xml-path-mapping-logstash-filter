@@ -14,6 +14,7 @@ import java.util.Properties;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.xpath.XPath;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -79,6 +80,32 @@ public class JsonXmlPathFilter implements Filter {
 	public static final PluginConfigSpec<Long> CACHE_SIZE_CONFIG = PluginConfigSpec.numSetting("cacheSize");
 
 	/**
+	 * Configuration setting for the filter, which says if document id will be in
+	 * different paths or not, for different documents.<br>
+	 * If this configuration is true, for different documents, document id can be in
+	 * different paths.<br>
+	 * Otherwise, document id have to be in same path for all the documents.<br>
+	 * 
+	 * When the configuration is true, we can configure main properties file this
+	 * way:<br>
+	 * <code>identifier.attribute.path.xml=[xpathExpr1] |OR| [xpathExpr2] |OR| ..|OR|..[xpathExprN]<br>
+	 * identifier.attribute.path.json=[jsonpathExpr1] |OR| [jsonpathExpr2] |OR| ..|OR|..[jsonpathExprN]</code><br>
+	 * Otherwise main properties file will be like: <br>
+	 * <code>identifier.attribute.path.xml=[xpathExpr]<br>
+	 * identifier.attribute.path.json=[jsonpathExpr]</code><br>
+	 * 
+	 * Be careful, when setting this configuration to true, if for a single document
+	 * more than one of the given paths to find document id is found, filter method
+	 * will get {@link ConfigurationException} and
+	 * <code>_documentparsefailure</code> tag will be added to the events.<br>
+	 * 
+	 * Default value is <code>false<code>.
+	 * 
+	 */
+	public static final PluginConfigSpec<Boolean> MULTIPATH_ID_CONFIG = PluginConfigSpec.booleanSetting("multipathId",
+			false);
+
+	/**
 	 * The id of the Logstash Filter
 	 */
 	private String id;
@@ -104,14 +131,20 @@ public class JsonXmlPathFilter implements Filter {
 	private ConfigurationsCache configCache;
 
 	/**
-	 * Document Builder Instance for Xml parsing
+	 * If document id can be found in different path for different documents
 	 */
-	private DocumentBuilder xmlDocBuilder;
-	
+	private Boolean multipathId;
+
 	/**
-	 * XPath Instance for Xml parsing
+	 * List of xpaths from where document id will be found for xml type documents
 	 */
-	private XPath xPathInstance;
+	private List<String> documentIdXPathList;
+
+	/**
+	 * List of jsonpaths from where document id will be found for json type
+	 * documents
+	 */
+	private List<String> documentIdJsonPathList;
 
 	/**
 	 * Constructor
@@ -123,11 +156,45 @@ public class JsonXmlPathFilter implements Filter {
 		this.typeField = config.get(TYPE_CONFIG);
 		this.mainProperties = PropertiesLoaderUtil.getPropertiesFromFile(config.get(MAIN_PROPERTIES_PATH_CONFIG));
 		this.configCache = new ConfigurationsCache(config.get(CACHE_SIZE_CONFIG));
-		this.xmlDocBuilder = XmlParseUtil.createDocBuilderInstance();
-		this.xPathInstance = XmlParseUtil.createXPathInstance();
+		this.multipathId = config.get(MULTIPATH_ID_CONFIG);
+		populateDocumentIdJsonPathList();
+		populateDocumentIdXPathList();
 		showFilterPluginInfo(config);
 	}
-	
+
+	/**
+	 * Populates the <code>documentIdXPathList</code> from the main properties file
+	 */
+	private void populateDocumentIdXPathList() {
+		this.documentIdXPathList = new LinkedList<>();
+		if (BooleanUtils.isTrue(this.multipathId)) {
+			String combinedXPaths = this.mainProperties.getProperty(Constants.XML_IDENTIFIER_KEY);
+			String[] splittedXPathArray = combinedXPaths.split(Constants.JSON_XML_PATH_SEPARATOR_REGEX);
+			for (String xPath : splittedXPathArray) {
+				this.documentIdXPathList.add(xPath.trim());
+			}
+		} else {
+			this.documentIdXPathList.add(this.mainProperties.getProperty(Constants.XML_IDENTIFIER_KEY));
+		}
+	}
+
+	/**
+	 * Populates the <code>documentIdJsonPathList</code> from the main properties
+	 * file
+	 */
+	private void populateDocumentIdJsonPathList() {
+		this.documentIdJsonPathList = new LinkedList<>();
+		if (BooleanUtils.isTrue(this.multipathId)) {
+			String combinedJsonPaths = this.mainProperties.getProperty(Constants.JSON_IDENTIFIER_KEY);
+			String[] splittedJsonPathArray = combinedJsonPaths.split(Constants.JSON_XML_PATH_SEPARATOR_REGEX);
+			for (String jsonPath : splittedJsonPathArray) {
+				this.documentIdJsonPathList.add(jsonPath.trim());
+			}
+		} else {
+			this.documentIdJsonPathList.add(this.mainProperties.getProperty(Constants.JSON_IDENTIFIER_KEY));
+		}
+	}
+
 	/**
 	 * Log the filter info
 	 * 
@@ -135,7 +202,7 @@ public class JsonXmlPathFilter implements Filter {
 	 */
 	private void showFilterPluginInfo(Configuration config) {
 		StringBuilder filterInfo = new StringBuilder();
-		
+
 		filterInfo.append("Filter Info: ");
 		filterInfo.append("[");
 		filterInfo.append(" documentField: ").append(this.documentField).append(",");
@@ -143,13 +210,15 @@ public class JsonXmlPathFilter implements Filter {
 		filterInfo.append(" mainProp: ").append(config.get(MAIN_PROPERTIES_PATH_CONFIG)).append(",");
 		filterInfo.append(" cacheSize: ").append(config.get(CACHE_SIZE_CONFIG)).append(",");
 		filterInfo.append("]");
-		
+
 		LOGGER.info(filterInfo.toString());
 	}
 
-
-	/* (non-Javadoc)
-	 * @see co.elastic.logstash.api.Filter#filter(java.util.Collection, co.elastic.logstash.api.FilterMatchListener)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see co.elastic.logstash.api.Filter#filter(java.util.Collection,
+	 * co.elastic.logstash.api.FilterMatchListener)
 	 */
 	@Override
 	public Collection<Event> filter(Collection<Event> events, FilterMatchListener matchListener) {
@@ -164,7 +233,7 @@ public class JsonXmlPathFilter implements Filter {
 			 * locations where configuration files for xml and json will be stored
 			 */
 			Object docType = event.getField(typeField);
-			if(docType instanceof String) {
+			if (docType instanceof String) {
 				String docTypeStr = (String) docType;
 				if (StringUtils.equals(docTypeStr, Constants.DOC_TYPE_XML)) {
 					processXmlDocument(event, eventIterator);
@@ -193,11 +262,27 @@ public class JsonXmlPathFilter implements Filter {
 		if (document instanceof String) {
 			String xmlDocument = (String) document;
 			Document domDocument;
+			XPath xPathInstance = XmlParseUtil.createXPathInstance();
 			String documentId = null;
 			try {
-				domDocument = XmlParseUtil.getDocument(this.xmlDocBuilder, xmlDocument);
-				documentId = XmlParseUtil.getStringFromXPath(domDocument, this.xPathInstance,
-						this.mainProperties.getProperty(Constants.XML_IDENTIFIER_KEY));
+				DocumentBuilder xmlDocBuilder = XmlParseUtil.createDocBuilderInstance();
+				domDocument = XmlParseUtil.getDocument(xmlDocBuilder, xmlDocument);
+				for(String xpathExpression : this.documentIdXPathList) {
+					String currentDocumentId = XmlParseUtil.getStringFromXPath(domDocument, xPathInstance, xpathExpression);
+					if(StringUtils.isNotBlank(documentId) && StringUtils.isNotBlank(currentDocumentId)) {
+						if(!StringUtils.equals(documentId, currentDocumentId)) {
+							throw new ConfigurationException(
+									"More than one XPathExpression to find document Id evaluates to some different non empty string."
+											+ " 1st document Id found:" + documentId + " 2nd document Id found:"
+											+ currentDocumentId);
+						}
+					} else if(StringUtils.isNotBlank(currentDocumentId)) {
+						documentId = currentDocumentId;
+					}
+				}
+				if(StringUtils.isBlank(documentId)) {
+					throw new ConfigurationException("Could not find the document Id.");
+				}
 			} catch (ConfigurationException configEx) {
 				handleConfigurationException(event, configEx);
 				return;
@@ -225,7 +310,8 @@ public class JsonXmlPathFilter implements Filter {
 			}
 			Map<String, List<String>> destFieldValuesMap = null;
 			try {
-				destFieldValuesMap = populateDestinationFieldValueMap(config, domDocument, Constants.DOC_TYPE_XML);
+				destFieldValuesMap = populateDestinationFieldValueMap(config, domDocument, Constants.DOC_TYPE_XML,
+						xPathInstance);
 			} catch (ConfigurationException configEx) {
 				handleConfigurationException(event, configEx);
 				return;
@@ -253,8 +339,22 @@ public class JsonXmlPathFilter implements Filter {
 			DocumentContext jsonDocumentContext = JsonParseUtil.getDocumentContext(jsonDocument);
 			String documentId = null;
 			try {
-				documentId = JsonParseUtil.getStringFromJsonPath(jsonDocumentContext,
-						this.mainProperties.getProperty(Constants.JSON_IDENTIFIER_KEY));
+				for(String jsonpathExpression : this.documentIdJsonPathList) {
+					String currentDocumentId = JsonParseUtil.getStringFromJsonPath(jsonDocumentContext, jsonpathExpression);
+					if(StringUtils.isNotBlank(documentId) && StringUtils.isNotBlank(currentDocumentId)) {
+						if(!StringUtils.equals(documentId, currentDocumentId)) {
+							throw new ConfigurationException(
+									"More than one JsonPathExpression to find document Id evaluates to different non empty strings."
+											+ " 1st document Id found:" + documentId + " 2nd document Id found:"
+											+ currentDocumentId);
+						}
+					} else if(StringUtils.isNotBlank(currentDocumentId)) {
+						documentId = currentDocumentId;
+					}
+				}
+				if(StringUtils.isBlank(documentId)) {
+					throw new ConfigurationException("Could not find the document Id.");
+				}
 			} catch (ConfigurationException configEx) {
 				handleConfigurationException(event, configEx);
 				return;
@@ -283,7 +383,7 @@ public class JsonXmlPathFilter implements Filter {
 			Map<String, List<String>> destFieldValuesMap = null;
 			try {
 				destFieldValuesMap = populateDestinationFieldValueMap(config, jsonDocumentContext,
-						Constants.DOC_TYPE_JSON);
+						Constants.DOC_TYPE_JSON, null);
 			} catch (ConfigurationException configEx) {
 				handleConfigurationException(event, configEx);
 				return;
@@ -314,7 +414,7 @@ public class JsonXmlPathFilter implements Filter {
 	 * @throws ConfigurationException
 	 */
 	private Map<String, List<String>> populateDestinationFieldValueMap(Configurations config, Object currentDocument,
-			String documentType) throws ConfigurationException {
+			String documentType, XPath xPathInstance) throws ConfigurationException {
 		Map<String, List<String>> destFieldValuesMap = new HashMap<String, List<String>>();
 		for (String attributePathSource : config.getAllConfigurationKeys()) {
 			String destinationField = config.getValue(attributePathSource);
@@ -326,7 +426,7 @@ public class JsonXmlPathFilter implements Filter {
 						JsonParseUtil.getStringFromJsonPath((DocumentContext) currentDocument, attributePathSource));
 			} else if (StringUtils.equals(documentType, Constants.DOC_TYPE_XML)) {
 				destFieldValuesMap.get(destinationField).add(XmlParseUtil.getStringFromXPath((Document) currentDocument,
-						this.xPathInstance, attributePathSource));
+						xPathInstance, attributePathSource));
 			}
 		}
 		return destFieldValuesMap;
@@ -352,7 +452,9 @@ public class JsonXmlPathFilter implements Filter {
 		}
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see co.elastic.logstash.api.Plugin#configSchema()
 	 */
 	@Override
@@ -363,10 +465,13 @@ public class JsonXmlPathFilter implements Filter {
 		configList.add(TYPE_CONFIG);
 		configList.add(MAIN_PROPERTIES_PATH_CONFIG);
 		configList.add(CACHE_SIZE_CONFIG);
+		configList.add(MULTIPATH_ID_CONFIG);
 		return Collections.unmodifiableList(configList);
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see co.elastic.logstash.api.Plugin#getId()
 	 */
 	@Override

@@ -1,0 +1,11 @@
+<stations>
+	<value>
+		<station>
+			<id>sdh</id>
+		</station>
+	</value>
+	<station>
+		<name>Sealdah</name>
+		<trainsToday>50</trainsToday>
+	</station>
+</stations>

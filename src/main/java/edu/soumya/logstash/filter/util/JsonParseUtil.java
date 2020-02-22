@@ -1,7 +1,10 @@
 package edu.soumya.logstash.filter.util;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 
 import edu.soumya.logstash.filter.exceptions.ConfigurationException;
 
@@ -33,6 +36,8 @@ public class JsonParseUtil {
 		try {
 			Object value = context.read(jsonPath);
 			return String.valueOf(value);
+		} catch(PathNotFoundException pnfe) {
+			return StringUtils.EMPTY;
 		} catch (RuntimeException e) {
 			throw new ConfigurationException("Failed to evaluate the jsonPath expression.", e);
 		}

@@ -54,4 +54,9 @@ public final class Constants {
 	 * Charset Encoding UTF-8
 	 */
 	public static final String CHARSET_ENCODING_UTF8 = "UTF-8";
+	
+	/**
+	 * Regular Expression to separate multiple JsonPath/XPath
+	 */
+	public static final String JSON_XML_PATH_SEPARATOR_REGEX = "\\|OR\\|";
 }
