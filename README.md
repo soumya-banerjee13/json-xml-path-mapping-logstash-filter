@@ -8,6 +8,7 @@ A logstash filter plugin, which parse input events from both json and xml files 
 | type           | String            | No              | type                 |
 | mainProp       | String(Uri)       | Yes             | -                    |
 | cacheSize      | Long              | No              | -                    |
+| multipathId    | Boolean           | No              | false                |
 
 ### document:
 Configuration to set the field of the event from where we will get the document.
@@ -28,6 +29,28 @@ Configuration setting for the filter, which says maximum how many configurations
 
 If not specified cache size will be infinite, which may cause memory overflow.
 
+### multipathId:
+Configuration setting for the filter, which says if document id will be in different paths or not, for different documents.
+
+If this configuration is true, for different documents, document id can be in different paths. Otherwise, document id have to be in the same path for all the documents.
+
+When the configuration is true, we can configure main properties file this way:
+
+```
+identifier.attribute.path.xml=[xpathExpr1] |OR| [xpathExpr2] |OR| ..|OR|..[xpathExprN]
+
+identifier.attribute.path.json=[jsonpathExpr1] |OR| [jsonpathExpr2] |OR| ..|OR|..[jsonpathExprN]
+```
+
+Otherwise main properties file will be like: 
+
+```
+identifier.attribute.path.xml=[xpathExpr]
+
+identifier.attribute.path.json=[jsonpathExpr]
+```
+
+Be careful, when setting this configuration to true, if values found in more than one of the given paths, to find document id for a single document and those values are not same, _documentparsefailure tag will be added to the events.
 
 ## What it does?
 1. It takes both xml and json type documents from logstash input events.
